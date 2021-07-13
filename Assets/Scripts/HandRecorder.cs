@@ -21,7 +21,7 @@ public class HandRecorder : MonoBehaviour
     private void Awake()
     {
         Debug.Log("Persistent Data Path" + Application.persistentDataPath);
-        string path = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\hand_log.csv");
+        filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\hand_log.csv");
         //FileStream fs;
         //if (!File.Exists(path))
         //{
@@ -32,13 +32,9 @@ public class HandRecorder : MonoBehaviour
         //{
         //    fs = File.OpenWrite(path);
         //}
-        if (!File.Exists(path))
-            File.Create(path);
-        writer = new StreamWriter(path, false);
-        Console.WriteLine("Created Stream Writer...");
-        filePath = path;
-        hand = HandJointUtils.FindHand(Handedness.Right);
-        WriteHeader();
+        if (!File.Exists(filePath))
+            File.Create(filePath);
+        hand = HandJointUtils.FindHand(Handedness.Right);        
     }
 
     private void WriteHeader()
@@ -52,8 +48,6 @@ public class HandRecorder : MonoBehaviour
             writer.Write(targetHeader + "_x," + targetHeader + "_y," + targetHeader + "_z,");
         }
         writer.Write("\"Label\""+ "\r\n");
-
-        // Write header       
     }
 
     public async void ToggleRecording()
@@ -67,17 +61,27 @@ public class HandRecorder : MonoBehaviour
             // we need to send a request with multipart/form-data
             var multiForm = new MultipartFormDataContent();
 
+            if (!File.Exists(filePath))
+            {
+                Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
+                return;
+            }
 
             // add file and directly upload it
             FileStream fs = File.OpenRead(filePath);
-            multiForm.Add(new StreamContent(fs), "hand_logs.csv", Path.GetFileName(filePath));
+            multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
 
             using HttpClient client = new HttpClient();
 
             // send request to API
             var url = "https://sheltered-peak-61041.herokuapp.com/upload";
             var response = await client.PostAsync(url, multiForm);
-        }        
+        }
+        else
+        {
+            writer = new StreamWriter(filePath, false);
+            WriteHeader();
+        }
     }
 
     // Start is called before the first frame update
@@ -90,8 +94,8 @@ public class HandRecorder : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //if (IsRecording)
-        //    Record();       
+        if (IsRecording)
+            Record();
     }    
 
     /// <summary>
@@ -124,7 +128,7 @@ public class HandRecorder : MonoBehaviour
             return;
         }
 
-        System.Random rnd = new System.Random();
+        //System.Random rnd = new System.Random();
         TrackedHandJoint[] joints = (TrackedHandJoint[])Enum.GetValues(typeof(TrackedHandJoint));
         int stopComma = joints.Length - 1;
         for (int i = 1; i < joints.Length; i++)
@@ -134,7 +138,7 @@ public class HandRecorder : MonoBehaviour
                 if (i < stopComma)
                     writer.Write(GetPositionFormatted(pose.Position) + ",");
                 else
-                    writer.Write(GetPositionFormatted(pose.Position) + "," + (float)rnd.Next(0, 5));
+                    writer.Write(GetPositionFormatted(pose.Position) + "," + 1);
             }
             else
                 writer.Write("null, ");
