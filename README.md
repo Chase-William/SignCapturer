@@ -1,5 +1,7 @@
 # SignCapturer
 
+- Setup recording walk-through
+
 ## Enable For Developers
 
 Go to `Settings -> Update & Security -> For developers` and enable the following:
@@ -39,10 +41,13 @@ Leave both check boxes unchecked and click install. After a few seconds you shou
 
 Now that the app is installed there are two simple ways (to my knowledge) to start the app. 
 
-#### Method 1:
-Go back to your hololens and close out of `Settings`. Open up your home and go to all apps, once there locate SignCapturer and click on it. The app will start loading and takes a moment so be patient. You will know it is ready when you see a single button as shown in the following screenshot after both methods.
+#### Method 1
+Go back to your hololens and close out of `Settings`. Open up your home and go to all apps, once there locate SignCapturer and click on it. The app will start loading and takes a moment so be patient. You will know it is ready when you see a single button as shown in the following screenshot after both methods. (*if the app isn't showing up `all apps` then use method 2 as this happened to me*)
 
-- Or -
+------- Or --------
+
+#### Method 2
+
 Alternatively on while still on the device portal `View -> Apps` page, locate the **Installed Apps** section to the right of where we have been working. Click the dropdown and search for `SignCapturer` and then select it. Once selected, click the start button and it will be launched in your hololens 2.
 
 <img src="./github/images/alternative_start.PNG"></a>
