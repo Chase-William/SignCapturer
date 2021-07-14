@@ -1,10 +1,10 @@
 # SignCapturer
 
-- Setup recording walk-through
+Setup recording walk-through...
 
-## Enable For Developers
+## Lets Begin
 
-Go to `Settings -> Update & Security -> For developers` and enable the following:
+To kick things off navigate to `Settings -> Update & Security -> For developers` and enable the following:
 1. Use developer features
 2. Device discovery
 3. Device portal
