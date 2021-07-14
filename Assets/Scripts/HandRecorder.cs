@@ -8,8 +8,6 @@ using System.Net.Http;
 
 public class HandRecorder : MonoBehaviour
 {
-    public event EventHandler<bool> IsWaitingForWebRequest;
-
     StreamWriter writer;
 
     IMixedRealityHand hand;
@@ -48,20 +46,24 @@ public class HandRecorder : MonoBehaviour
         Application.Quit(1);
     }
 
-    public void StartRecording()
+    public void ToggleRecording()
     {
-        if (IsRecording) return;
-
-        writer = new StreamWriter(filePath, false);
-        WriteHeader();
-        IsRecording = true;
+        IsRecording = !IsRecording;
+        if (IsRecording)
+            StartRecording();
+        else
+            StopRecording();
     }
     
+    private void StartRecording()
+    {
+        writer = new StreamWriter(filePath, false);
+        WriteHeader();
+    }
+
     public async void StopRecording()
     {
-        if (!IsRecording) return;
-
-        IsWaitingForWebRequest?.Invoke(this, true);
+        IsRecording = false;
 
         writer?.Close();        
         writer?.Dispose();
@@ -82,12 +84,10 @@ public class HandRecorder : MonoBehaviour
         using HttpClient client = new HttpClient();
         
         // send request to API
-        var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
-        IsRecording = false;        
+        var url = "https://sheltered-peak-61041.herokuapp.com/chase";            
         var response = await client.PostAsync(url, multiForm);
         fs.Close();
         fs.Dispose();
-        IsWaitingForWebRequest?.Invoke(this, false);
     }
 
     private void WriteHeader()
@@ -147,7 +147,7 @@ public class HandRecorder : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (IsRecording && !waitingForRequest)
+        if (IsRecording)
             Record();
     }    
 
