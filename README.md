@@ -49,7 +49,7 @@ Alternatively on while still on the device portal `View -> Apps` page, locate th
 
 The result for both methods should look as follows.
 
-<img src="./github/images/app_runtime.PNG"></a>
+<img src="./github/images/app_runtime.jpg"></a>
 
 Click the button on to begin recording your hand. All the visible joints on your hand are being recorded. Once done, click the button to turn off recording, and you can now close the app for the data is automatically routed to a remote server for storage.
 
