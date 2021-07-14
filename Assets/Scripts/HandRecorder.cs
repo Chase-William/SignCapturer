@@ -13,9 +13,12 @@ public class HandRecorder : MonoBehaviour
     IMixedRealityHand hand;
 
     TrackedHandJoint[] joints;
+
     FileStream fs;
+
     public bool IsRecording { get; set; }
-    private bool waitingForRequest;
+
+
     private string filePath;   
 
     private void Awake()
@@ -35,16 +38,7 @@ public class HandRecorder : MonoBehaviour
         if (!File.Exists(filePath))
             File.Create(filePath);
         hand = HandJointUtils.FindHand(Handedness.Right);        
-    }    
-
-    public void Exit()
-    {
-        writer?.Close();
-        writer?.Dispose();
-        fs?.Close();
-        fs?.Dispose();
-        Application.Quit(1);
-    }
+    }        
 
     public void ToggleRecording()
     {
@@ -57,37 +51,41 @@ public class HandRecorder : MonoBehaviour
     
     private void StartRecording()
     {
-        writer = new StreamWriter(filePath, false);
+        writer = new StreamWriter(filePath, false);       
         WriteHeader();
     }
 
     public async void StopRecording()
-    {
-        IsRecording = false;
-
+    {        
         writer?.Close();        
         writer?.Dispose();
-        writer = null;
 
-        // we need to send a request with multipart/form-data
-        var multiForm = new MultipartFormDataContent();
-
-        if (!File.Exists(filePath))
+        try
         {
-            Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
-            return;
-        }
+            // we need to send a request with multipart/form-data
+            var multiForm = new MultipartFormDataContent();
 
-        // add file and directly upload it
-        fs = File.OpenRead(filePath);
-        multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));        
-        using HttpClient client = new HttpClient();
-        
-        // send request to API
-        var url = "https://sheltered-peak-61041.herokuapp.com/chase";            
-        var response = await client.PostAsync(url, multiForm);
-        fs.Close();
-        fs.Dispose();
+            if (!File.Exists(filePath))
+            {
+                Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
+                return;
+            }
+
+            // add file and directly upload it
+            using (fs = File.OpenRead(filePath))
+            {
+                multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
+                using HttpClient client = new HttpClient();
+
+                // send request to API
+                var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
+                var response = await client.PostAsync(url, multiForm);
+            }
+        }    
+        catch (Exception ex)
+        {
+            
+        }
     }
 
     private void WriteHeader()
