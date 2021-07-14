@@ -78,7 +78,7 @@ public class HandRecorder : MonoBehaviour
                 using HttpClient client = new HttpClient();
 
                 // send request to API
-                var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
+                var url = "https://sheltered-peak-61041.herokuapp.com/roshan";
                 var response = await client.PostAsync(url, multiForm);
             }
         }    
