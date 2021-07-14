@@ -8,14 +8,16 @@ using System.Net.Http;
 
 public class HandRecorder : MonoBehaviour
 {
+    public event EventHandler<bool> IsWaitingForWebRequest;
+
     StreamWriter writer;
 
     IMixedRealityHand hand;
 
     TrackedHandJoint[] joints;
-
+    FileStream fs;
     public bool IsRecording { get; set; }
-
+    private bool waitingForRequest;
     private string filePath;   
 
     private void Awake()
@@ -35,6 +37,57 @@ public class HandRecorder : MonoBehaviour
         if (!File.Exists(filePath))
             File.Create(filePath);
         hand = HandJointUtils.FindHand(Handedness.Right);        
+    }    
+
+    public void Exit()
+    {
+        writer?.Close();
+        writer?.Dispose();
+        fs?.Close();
+        fs?.Dispose();
+        Application.Quit(1);
+    }
+
+    public void StartRecording()
+    {
+        if (IsRecording) return;
+
+        writer = new StreamWriter(filePath, false);
+        WriteHeader();
+        IsRecording = true;
+    }
+    
+    public async void StopRecording()
+    {
+        if (!IsRecording) return;
+
+        IsWaitingForWebRequest?.Invoke(this, true);
+
+        writer?.Close();        
+        writer?.Dispose();
+        writer = null;
+
+        // we need to send a request with multipart/form-data
+        var multiForm = new MultipartFormDataContent();
+
+        if (!File.Exists(filePath))
+        {
+            Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
+            return;
+        }
+
+        // add file and directly upload it
+        fs = File.OpenRead(filePath);
+        multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));        
+        using HttpClient client = new HttpClient();
+        
+        // send request to API
+        var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
+        IsRecording = false;        
+        var response = await client.PostAsync(url, multiForm);
+        fs.Close();
+        fs.Dispose();
+        IsWaitingForWebRequest?.Invoke(this, false);
     }
 
     private void WriteHeader()
@@ -47,42 +100,42 @@ public class HandRecorder : MonoBehaviour
             targetHeader = headers[i];
             writer.Write(targetHeader + "_x," + targetHeader + "_y," + targetHeader + "_z,");
         }
-        writer.Write("\"Label\""+ "\r\n");
+        writer.Write("\"Label\"" + "\r\n");
     }
 
-    public async void ToggleRecording()
-    {        
-        IsRecording = !IsRecording;
-        if (!IsRecording)
-        {
-            writer?.Close();
-            writer?.Dispose();
+    //public async void ToggleRecording()
+    //{        
+    //    IsRecording = !IsRecording;
+    //    if (!IsRecording)
+    //    {
+    //        writer?.Close();
+    //        writer?.Dispose();
 
-            // we need to send a request with multipart/form-data
-            var multiForm = new MultipartFormDataContent();
+    //        // we need to send a request with multipart/form-data
+    //        var multiForm = new MultipartFormDataContent();
 
-            if (!File.Exists(filePath))
-            {
-                Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
-                return;
-            }
+    //        if (!File.Exists(filePath))
+    //        {
+    //            Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
+    //            return;
+    //        }
 
-            // add file and directly upload it
-            FileStream fs = File.OpenRead(filePath);
-            multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
+    //        // add file and directly upload it
+    //        FileStream fs = File.OpenRead(filePath);
+    //        multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
 
-            using HttpClient client = new HttpClient();
+    //        using HttpClient client = new HttpClient();
 
-            // send request to API
-            var url = "https://sheltered-peak-61041.herokuapp.com/upload";
-            var response = await client.PostAsync(url, multiForm);
-        }
-        else
-        {
-            writer = new StreamWriter(filePath, false);
-            WriteHeader();
-        }
-    }
+    //        // send request to API
+    //        var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
+    //        var response = await client.PostAsync(url, multiForm);
+    //    }
+    //    else
+    //    {
+    //        writer = new StreamWriter(filePath, false);
+    //        WriteHeader();
+    //    }
+    //}
 
     // Start is called before the first frame update
     void Start()
@@ -94,7 +147,7 @@ public class HandRecorder : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        if (IsRecording)
+        if (IsRecording && !waitingForRequest)
             Record();
     }    
 
