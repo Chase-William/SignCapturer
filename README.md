@@ -21,7 +21,8 @@ Click on the `Advanced` button in the bottom right, which will then show:
 
 <img src="./github/images/privacy_err_continue.PNG"></a>
 
-Click on the blue continue text with your IP address in the button's text. This will now begin the authorization part of connecting to your hololens 2 remotely.
+
+If this is your first time connecting to the device portal follow <a href="https://docs.microsoft.com/en-us/windows/mixed-reality/develop/platform-capabilities-and-apis/using-the-windows-device-portal#creating-a-username-and-password">this documentation</a> provided by Microsoft. Otherwise, click on the blue continue text with your IP address in the button's text. This will now begin the authorization part of connecting to your hololens 2 remotely.
 
 <img src="./github/images/auth.PNG"></a>
 
@@ -57,5 +58,7 @@ The result for both methods should look as follows.
 <img src="./github/images/app_runtime.jpg"></a>
 
 Click the button on to begin recording your hand. All the visible joints on your hand are being recorded. Once done, click the button to turn off recording, and you can now close the app for the data is automatically routed to a remote server for storage.
+
+Lastly, please hold a sign for no longer than 1 minute and only use your right hand.
 
 Thank you!
