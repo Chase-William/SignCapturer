@@ -8,60 +8,48 @@ using System.Net.Http;
 
 public class HandRecorder : MonoBehaviour
 {
+    public event Action RecorderIsReady;
+
+    const string FILE_EXTENSION = ".csv";
+
     StreamWriter writer;
-
     IMixedRealityHand hand;
-
     TrackedHandJoint[] joints;
-
     FileStream fs;
+    string filePath;    
+    
+    public bool IsRecording { get; private set; }
 
-    public bool IsRecording { get; set; }
+    string fileName;
 
-
-    private string filePath;   
+    private string username;
+    private char letter;
 
     private void Awake()
     {
-        Debug.Log("Persistent Data Path" + Application.persistentDataPath);
-        filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "\\hand_log.csv");
-        //FileStream fs;
-        //if (!File.Exists(path))
-        //{
-        //    Debug.LogWarning("Creating File that needs to exist");
-        //    fs = File.Create(path);
-        //}
-        //else
-        //{
-        //    fs = File.OpenWrite(path);
-        //}
-        if (!File.Exists(filePath))
-            File.Create(filePath);
+        Debug.Log("Persistent Data Path" + Application.persistentDataPath);        
         hand = HandJointUtils.FindHand(Handedness.Right);        
-    }        
-
-    public void ToggleRecording()
-    {
-        IsRecording = !IsRecording;
-        if (IsRecording)
-            StartRecording();
-        else
-            StopRecording();
-    }
+    }  
     
-    private void StartRecording()
+    public void StartRecording(string _username, char _letter)
     {
-        writer = new StreamWriter(filePath, false);       
-        WriteHeader();
+        if (IsRecording)
+            return;
+        IsRecording = true;
+        username = _username;
+        letter = _letter;
     }
 
     public async void StopRecording()
-    {        
-        writer?.Close();        
-        writer?.Dispose();
-
+    {
+        IsRecording = false;        
         try
         {
+            writer?.Flush();
+            writer?.Close();
+            writer?.Dispose();
+            writer = null;
+
             // we need to send a request with multipart/form-data
             var multiForm = new MultipartFormDataContent();
 
@@ -72,19 +60,25 @@ public class HandRecorder : MonoBehaviour
             }
 
             // add file and directly upload it
-            using (fs = File.OpenRead(filePath))
-            {
-                multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
-                using HttpClient client = new HttpClient();
+            fs = File.OpenRead(filePath);            
+            multiForm.Add(new StreamContent(fs), $"{fileName}", Path.GetFileName(filePath));
+            multiForm.Headers.Add("fileName", fileName);
+            using HttpClient client = new HttpClient();
 
-                // send request to API
-                var url = "https://sheltered-peak-61041.herokuapp.com/roshan";
-                var response = await client.PostAsync(url, multiForm);
-            }
+            // send request to API
+            var url = $"https://sheltered-peak-61041.herokuapp.com/save";
+            var response = await client.PostAsync(url, multiForm);
+            
         }    
         catch (Exception ex)
         {
-            
+            Debug.Log("StopRecording: " + ex);
+        } 
+        finally
+        {
+            RecorderIsReady?.Invoke();
+            fs.Close();
+            fs.Dispose();
         }
     }
 
@@ -101,40 +95,6 @@ public class HandRecorder : MonoBehaviour
         writer.Write("\"Label\"" + "\r\n");
     }
 
-    //public async void ToggleRecording()
-    //{        
-    //    IsRecording = !IsRecording;
-    //    if (!IsRecording)
-    //    {
-    //        writer?.Close();
-    //        writer?.Dispose();
-
-    //        // we need to send a request with multipart/form-data
-    //        var multiForm = new MultipartFormDataContent();
-
-    //        if (!File.Exists(filePath))
-    //        {
-    //            Debug.LogError("Hand log output file is not present when trying to retrieve for sending across network.");
-    //            return;
-    //        }
-
-    //        // add file and directly upload it
-    //        FileStream fs = File.OpenRead(filePath);
-    //        multiForm.Add(new StreamContent(fs), "hand_log.csv", Path.GetFileName(filePath));
-
-    //        using HttpClient client = new HttpClient();
-
-    //        // send request to API
-    //        var url = "https://sheltered-peak-61041.herokuapp.com/aaron";
-    //        var response = await client.PostAsync(url, multiForm);
-    //    }
-    //    else
-    //    {
-    //        writer = new StreamWriter(filePath, false);
-    //        WriteHeader();
-    //    }
-    //}
-
     // Start is called before the first frame update
     void Start()
     {
@@ -146,55 +106,79 @@ public class HandRecorder : MonoBehaviour
     void Update()
     {
         if (IsRecording)
-            Record();
+            SaveJoints();
     }    
 
     /// <summary>
     /// Records to file the vector3 coords of all the hand joints.
     /// </summary>
-    private void Record()
+    private void SaveJoints()
     {
-        Debug.Log("[Update->Record] Recording Joints...");
-        if (hand == null)
+        try
         {
-            hand = HandJointUtils.FindHand(Handedness.Right);
-            Debug.Log("IMixedRealityHand is null");
-            if (hand == null)
-                return;
-        }
-
-        if (!hand.IsPositionAvailable)
-        {
-            Debug.Log("IMixedRealityHand isn't providing position data, skipped update");
-            return;
-        }
-        else if (hand.TrackingState != TrackingState.Tracked)
-        {
-            Debug.Log("Cannot track hand");
-            return;
-        }
-        else if (!hand.Enabled)
-        {
-            Debug.Log("not enabled");
-            return;
-        }
-
-        //System.Random rnd = new System.Random();
-        TrackedHandJoint[] joints = (TrackedHandJoint[])Enum.GetValues(typeof(TrackedHandJoint));
-        int stopComma = joints.Length - 1;
-        for (int i = 1; i < joints.Length; i++)
-        {
-            if (HandJointUtils.TryGetJointPose(joints[i], Handedness.Right, out MixedRealityPose pose))
+            if (writer == null)
             {
-                if (i < stopComma)
-                    writer.Write(GetPositionFormatted(pose.Position) + ",");
-                else
-                    writer.Write(GetPositionFormatted(pose.Position) + "," + 1);
+                fileName = ($"hand_log_{username}_{letter}" + FILE_EXTENSION);
+                Debug.Log("FileName: " + fileName);
+
+
+                filePath = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), fileName);
+                //filePath = Path.Combine("D:\\Dev\\data", fileName);
+
+                Debug.Log("FilePath: " + filePath);
+                if (!File.Exists(filePath))
+                    File.Create(filePath);
+                writer = new StreamWriter(filePath, false);
+                WriteHeader();
             }
-            else
-                writer.Write("null, ");
+
+            Debug.Log("[Update->Record] Recording Joints...");
+            if (hand == null)
+            {
+                hand = HandJointUtils.FindHand(Handedness.Right);
+                Debug.Log("IMixedRealityHand is null");
+                if (hand == null)
+                    return;
+            }
+
+            if (!hand.IsPositionAvailable)
+            {
+                Debug.Log("IMixedRealityHand isn't providing position data, skipped update");
+                return;
+            }
+            else if (hand.TrackingState != TrackingState.Tracked)
+            {
+                Debug.Log("Cannot track hand");
+                return;
+            }
+            else if (!hand.Enabled)
+            {
+                Debug.Log("not enabled");
+                return;
+            }
+
+            //System.Random rnd = new System.Random();
+            TrackedHandJoint[] joints = (TrackedHandJoint[])Enum.GetValues(typeof(TrackedHandJoint));
+            int stopComma = joints.Length - 1;
+            int letterAsNum = (int)letter;
+            for (int i = 1; i < joints.Length; i++)
+            {
+                if (HandJointUtils.TryGetJointPose(joints[i], Handedness.Right, out MixedRealityPose pose))
+                {
+                    if (i < stopComma)
+                        writer.Write(GetPositionFormatted(pose.Position) + ",");
+                    else
+                        writer.Write(GetPositionFormatted(pose.Position) + "," + letterAsNum);
+                }
+                else
+                    writer.Write("null, ");
+            }
+            writer.Write("\n");
+        }        
+        catch (Exception ex)
+        {
+            Debug.Log("SaveJoints: " + ex);
         }
-        writer.Write("\n");
     }
 
     private string GetPositionFormatted(in Vector3 vec)
